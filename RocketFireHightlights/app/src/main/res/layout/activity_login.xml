@@ -9,7 +9,7 @@
         android:id="@+id/username_edit_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Username or Email" />
+        android:hint="Email" />
 
     <EditText
         android:id="@+id/password_edit_text"

@@ -46,7 +46,7 @@ public class RegistrationActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Exception e) {
-                runOnUiThread(() -> Toast.makeText(RegistrationActivity.this, "Registration failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(RegistrationActivity.this, "Registration failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         });
     }

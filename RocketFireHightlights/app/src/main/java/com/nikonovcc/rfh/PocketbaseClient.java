@@ -270,4 +270,8 @@ public class PocketbaseClient {
         void onSuccess(T result);
         void onFailure(Exception e);
     }
+
+    public String getAuthToken() {
+        return authToken;
+    }
 }

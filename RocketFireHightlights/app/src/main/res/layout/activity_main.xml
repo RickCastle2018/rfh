@@ -5,18 +5,38 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Rocket Fire Highlights"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/archivo"
+            android:gravity="start"
+            android:text="Rocket Fire Highlights"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="יחד ננצח"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="end"
+            android:textDirection="rtl" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Track, collect, and share your צבע אדום moments with people nearby and beyond." />
+        android:layout_marginTop="4dp"
+        android:text="Track, collect, and share your צבע אדום moments with people nearby and beyond.\n\nCreated with care by Nikita, a student from Herzliya." />
 
     <TextView
         android:layout_width="wrap_content"

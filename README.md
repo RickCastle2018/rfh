@@ -5,5 +5,5 @@ Final project for megamat mahshevim, inspired by the BeReal app. An Android app 
 
 Backend - pocketbase (hosted with https://github.com/pockethost/pockethost). App: Android Java with Material UI.
 
-<img width="245" alt="image" src="https://github.com/user-attachments/assets/d34fe5a1-6949-414a-a393-105fd223f8f1" />
+<img width="234" alt="image" src="https://github.com/user-attachments/assets/c1ac3510-024c-4e0e-a97a-22050db20093" />
 

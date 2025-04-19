@@ -18,6 +18,18 @@ public class Highlight {
     private String achievementId;
     private String alertId;
 
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public void setTimestamp(Date timestamp) {
+        this.timestamp = timestamp;
+    }
+
     public interface HighlightCallback {
         void onHighlightReady(Highlight highlight);
     }

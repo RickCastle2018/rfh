@@ -365,6 +365,21 @@ public class PocketbaseClient {
         });
     }
 
+    public String getUserIdFromToken(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) return null;
+
+            String payloadJson = new String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING));
+            JSONObject payload = new JSONObject(payloadJson);
+
+            return payload.getString("id"); // usually user ID is stored as "id"
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public void createHighlightWithFormData(File imageFile, String location, String achievementId, String alertId, final ApiCallback<Highlight> callback) {
         // Create multipart form
         MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM);
@@ -376,6 +391,8 @@ public class PocketbaseClient {
         builder.addFormDataPart("achievement", achievementId);
         builder.addFormDataPart("timestamp", String.valueOf(System.currentTimeMillis()));
         builder.addFormDataPart("shares", "0");
+        // user id
+        builder.addFormDataPart("user", getUserIdFromToken(authToken));
 
         if (alertId != null) {
             builder.addFormDataPart("alert", alertId);

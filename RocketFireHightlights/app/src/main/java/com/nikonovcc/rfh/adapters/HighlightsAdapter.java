@@ -142,7 +142,13 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
     public void addHighlight(Highlight highlight) {
         for (Highlight h : highlights) {
             if (h.getAlertId() != null && h.getAlertId().equals(highlight.getAlertId())) {
-                return; // Already exists based on alertId
+                // Highlight already exists, update it
+                h.setShares(highlight.getShares());
+                h.setImageUrl(highlight.getImageUrl());
+                h.setLocation(highlight.getLocation());
+                h.setTimestamp(highlight.getTimestamp());
+                notifyItemChanged(highlights.indexOf(h));
+                return;
             }
         }
 

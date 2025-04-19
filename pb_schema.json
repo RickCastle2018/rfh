@@ -390,8 +390,8 @@
   },
   {
     "id": "pbc_3301151734",
-    "listRule": "@request.auth.id != \"\"",
-    "viewRule": "@request.auth.id = user.id",
+    "listRule": "",
+    "viewRule": "",
     "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id = user.id",
     "deleteRule": "@request.auth.id = user.id",
@@ -443,7 +443,7 @@
         "hidden": false,
         "id": "file3309110367",
         "maxSelect": 1,
-        "maxSize": 524288000,
+        "maxSize": 0,
         "mimeTypes": [
           "image/jpeg",
           "image/png",
@@ -485,7 +485,7 @@
         "type": "relation"
       },
       {
-        "cascadeDelete": false,
+        "cascadeDelete": true,
         "collectionId": "pbc_3228155173",
         "hidden": false,
         "id": "relation402474689",
@@ -518,7 +518,9 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_lboH5redzN` ON `highlights` (\n  `user`,\n  `alert`\n)"
+    ],
     "system": false
   },
   {

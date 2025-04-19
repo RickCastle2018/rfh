@@ -319,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
+                loadAchievements();
                 checkAndDisplayLatestAlert();
                 startRepeatingAlertCheck(); // run again after 60s
             }

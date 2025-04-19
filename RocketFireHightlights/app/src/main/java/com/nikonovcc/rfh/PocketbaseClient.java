@@ -206,6 +206,53 @@ public class PocketbaseClient {
         });
     }
 
+    public void getHighlightsFromAlerts(final ApiCallback<List<Highlight>> callback) {
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/collections/alerts/records?perPage=1000")
+                .header("Authorization", authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure(new IOException("Failed to fetch alerts: " + response.body().string()));
+                    return;
+                }
+
+                try {
+                    JSONObject jsonResponse = new JSONObject(response.body().string());
+                    JSONArray items = jsonResponse.getJSONArray("items");
+                    List<Highlight> highlights = new ArrayList<>();
+
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject item = items.getJSONObject(i);
+                        JSONObject bodyJson = item.getJSONObject("body");
+
+                        // Convert JSON back into AlertGroup
+                        AlertGroup alertGroup = new Gson().fromJson(bodyJson.toString(), AlertGroup.class);
+
+                        Highlight highlight = Highlight.fromAlertGroup(alertGroup);
+                        if (highlight != null) {
+                            highlights.add(highlight);
+                        }
+                    }
+
+                    Log.d("PB", "Highlights fetched, sending to callback " + highlights);
+
+                    callback.onSuccess(highlights);
+                } catch (JSONException e) {
+                    callback.onFailure(e);
+                }
+            }
+        });
+    }
+
     public void getHighlights(final ApiCallback<List<Highlight>> callback) {
         Request request = new Request.Builder()
                 .url(baseUrl + "/api/collections/highlights/records")

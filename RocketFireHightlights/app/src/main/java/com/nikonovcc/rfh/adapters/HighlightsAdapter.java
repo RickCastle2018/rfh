@@ -72,7 +72,9 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
     }
 
     public void addHighlight(Highlight highlight) {
-        highlights.add(0, highlight); // insert at top
-        notifyItemInserted(0);
+        if (!highlights.contains(highlight)) {
+            highlights.add(0, highlight);
+            notifyItemInserted(0);
+        }
     }
 }

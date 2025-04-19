@@ -93,9 +93,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadHighlights() {
-        pocketbaseClient.getHighlights(new PocketbaseClient.ApiCallback<List<Highlight>>() {
+        pocketbaseClient.getHighlightsFromAlerts(new PocketbaseClient.ApiCallback<List<Highlight>>() {
             @Override
             public void onSuccess(List<Highlight> highlights) {
+                Log.d("LHIGHLIGHTS", "Loaded highlights: " + highlights);
                 runOnUiThread(() -> highlightsAdapter.setHighlights(highlights));
             }
 

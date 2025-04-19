@@ -9,17 +9,25 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.nikonovcc.rfh.adapters.AchievementsAdapter;
 import com.nikonovcc.rfh.adapters.HighlightsAdapter;
 import com.nikonovcc.rfh.models.Achievement;
 import com.nikonovcc.rfh.models.Highlight;
+import com.nikonovcc.rfh.work.AlertSyncWorker;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.sql.Time;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
     private RecyclerView achievementsRecyclerView;
@@ -34,8 +42,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        PeriodicWorkRequest request =
+                new PeriodicWorkRequest.Builder(AlertSyncWorker.class, 1, TimeUnit.MINUTES).build();
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "alert_worker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
+        );
+
         // Initialize Pocketbase client
-        pocketbaseClient = new PocketbaseClient("https://rocket-fire-highlights.pockethost.io");
+        pocketbaseClient = new PocketbaseClient(getApplicationContext(),"https://rocket-fire-highlights.pockethost.io");
 
         // Initialize views
         achievementsRecyclerView = findViewById(R.id.achievements_recycler_view);
@@ -78,6 +95,16 @@ public class MainActivity extends AppCompatActivity {
         pocketbaseClient.getHighlights(new PocketbaseClient.ApiCallback<List<Highlight>>() {
             @Override
             public void onSuccess(List<Highlight> highlights) {
+                highlights.add(new Highlight(
+                        "123",
+                        "test",
+                        "testcity",
+                        Calendar.getInstance().getTime(),
+                        "test",
+                        10,
+                        "testID1",
+                        "testID2"
+                ));
                 runOnUiThread(() -> highlightsAdapter.setHighlights(highlights));
             }
 

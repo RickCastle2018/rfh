@@ -21,15 +21,13 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        String token = sharedPreferences.getString("auth_token", null);
-        if (token != null) {
+        pocketbaseClient = new PocketbaseClient(getApplicationContext(),"https://rocket-fire-highlights.pockethost.io");
+
+        if (!pocketbaseClient.isTokenExpired()) {
             // Token exists, proceed to main functionality
             startActivity(new Intent(this, MainActivity.class));
             finish();
         }
-
-        pocketbaseClient = new PocketbaseClient("https://rocket-fire-highlights.pockethost.io");
 
         usernameEditText = findViewById(R.id.username_edit_text);
         passwordEditText = findViewById(R.id.password_edit_text);

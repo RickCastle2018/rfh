@@ -10,9 +10,10 @@ public class Highlight {
     private String imageUrl;
     private int shares;
     private String achievementId;
+    private String alertId;
 
     public Highlight(String id, String userId, String location, Date timestamp,
-                     String imageUrl, int shares, String achievementId) {
+                     String imageUrl, int shares, String achievementId, String alertId) {
         this.id = id;
         this.userId = userId;
         this.location = location;
@@ -20,6 +21,7 @@ public class Highlight {
         this.imageUrl = imageUrl;
         this.shares = shares;
         this.achievementId = achievementId;
+        this.alertId = alertId;
     }
 
     // Getters
@@ -30,4 +32,5 @@ public class Highlight {
     public String getImageUrl() { return imageUrl; }
     public int getShares() { return shares; }
     public String getAchievementId() { return achievementId; }
+    public String getAlertId() { return alertId; }
 }

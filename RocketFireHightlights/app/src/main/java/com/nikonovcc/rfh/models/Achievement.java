@@ -24,4 +24,5 @@ public class Achievement {
     public String getIconUrl() { return iconUrl; }
     public String getType() { return type; }
     public int getCount() { return count; }
+    public void setCount(int count) { this.count = count;}
 }

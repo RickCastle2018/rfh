@@ -1,5 +1,6 @@
 package com.nikonovcc.rfh.adapters;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,7 @@ import android.widget.ImageView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.nikonovcc.rfh.FullscreenImageActivity;
 import com.nikonovcc.rfh.R;
 
 import java.util.List;
@@ -36,6 +38,11 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
+        holder.imageView.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), FullscreenImageActivity.class);
+            intent.putExtra("image_url", imageUrls.get(position)); // the current one
+            v.getContext().startActivity(intent);
+        });
         Glide.with(holder.imageView.getContext())
                 .load(imageUrls.get(position))
                 .into(holder.imageView);

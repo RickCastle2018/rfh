@@ -30,6 +30,7 @@
 
         <activity android:name=".RegistrationActivity" />
         <activity android:name=".MainActivity" />
+        <activity android:name=".FullscreenImageActivity" />
 
         <meta-data
             android:name="preloaded_fonts"

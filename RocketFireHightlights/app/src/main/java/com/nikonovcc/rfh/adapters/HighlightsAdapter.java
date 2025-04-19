@@ -57,7 +57,7 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
         Highlight highlight = highlights.get(position);
         holder.locationView.setText("Siren in " + highlight.getLocation());
         holder.timeView.setText(TimeUtils.getTimeAgo(highlight.getTimestamp()));
-        holder.sharesView.setText(highlight.getShares() + " Shares");
+        holder.sharesView.setText(highlight.getShares() + " highlights shared");
 
 // Handle see highlights click
         holder.seeHighlightsButton.setOnClickListener(v -> {

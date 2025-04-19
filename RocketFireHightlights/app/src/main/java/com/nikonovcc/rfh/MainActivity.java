@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialize views
         achievementsRecyclerView = findViewById(R.id.achievements_recycler_view);
         highlightsRecyclerView = findViewById(R.id.highlights_recycler_view);
-        shareButton = findViewById(R.id.share_button);
+//        shareButton = findViewById(R.id.share_button);
 
         // Set up achievements RecyclerView
         achievementsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         highlightsRecyclerView.setAdapter(highlightsAdapter);
 
         // Set up share button
-        shareButton.setOnClickListener(v -> openShareDialog());
+//        shareButton.setOnClickListener(v -> openShareDialog());
 
         // Load data
         loadAchievements();

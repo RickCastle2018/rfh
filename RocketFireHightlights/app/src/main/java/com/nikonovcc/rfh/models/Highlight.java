@@ -89,7 +89,14 @@ public class Highlight {
 
                         // If no match, fallback to first city in alert
                         if (finalCity.equals("Unknown")) {
-                            finalCity = cities.get(0);
+                            String displayLocation = cities.get(0); // primary
+                            if (cities.size() > 1) {
+                                displayLocation += ", " + cities.get(1); // optional second
+                            }
+                            if (cities.size() > 2) {
+                                displayLocation += " +" + (cities.size() - 2) + " more";
+                            };
+                            finalCity = displayLocation;
                         }
                     }
                 }

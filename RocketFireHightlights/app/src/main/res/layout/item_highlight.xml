@@ -17,7 +17,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@android:color/black"
+            android:clickable="true"
+            android:focusable="true" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -39,16 +44,6 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/highlight_gallery_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Swipe to see more photos"
-            android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"
-            android:visibility="gone"/>
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/highlight_gallery"
             android:layout_width="match_parent"
@@ -62,13 +57,35 @@
             android:scrollbars="horizontal"/>
 
 
-        <Button
-            android:id="@+id/see_highlights_button"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="See Highlights"
-            style="@style/Widget.MaterialComponents.Button.TextButton" />
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/see_highlights_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="See Highlights"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/share_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Share Yours"
+                android:layout_marginStart="16dp"
+                style="@style/Widget.MaterialComponents.Button"
+                app:cornerRadius="12dp"
+                app:iconPadding="8dp"
+                app:iconTint="@android:color/white"
+                android:textColor="@android:color/white"
+                android:backgroundTint="?attr/colorPrimary" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

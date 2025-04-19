@@ -1,6 +1,8 @@
 package com.nikonovcc.rfh.adapters;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.nikonovcc.rfh.PocketbaseClient;
 import com.nikonovcc.rfh.R;
+import com.nikonovcc.rfh.ShareDialogFragment;
 import com.nikonovcc.rfh.models.Highlight;
 import com.nikonovcc.rfh.utils.TimeUtils;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
         TextView sharesView;
         View seeHighlightsButton;
         RecyclerView galleryView;
+        View shareButton;
 
         boolean expanded = false;
 
@@ -40,6 +44,7 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
             timeView = view.findViewById(R.id.highlight_time);
             sharesView = view.findViewById(R.id.highlight_shares);
             seeHighlightsButton = view.findViewById(R.id.see_highlights_button);
+            shareButton = view.findViewById(R.id.share_button);
             galleryView = view.findViewById(R.id.highlight_gallery);
         }
     }
@@ -58,6 +63,24 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
         holder.locationView.setText("Siren in " + highlight.getLocation());
         holder.timeView.setText(TimeUtils.getTimeAgo(highlight.getTimestamp()));
         holder.sharesView.setText(highlight.getShares() + " highlights shared");
+
+        holder.shareButton.setOnClickListener(v -> {
+            Log.d("ShareButton", "Clicked for alertId: " + highlight.getAlertId());
+
+            // Use FragmentActivity to show the dialog
+            if (v.getContext() instanceof androidx.fragment.app.FragmentActivity) {
+                ShareDialogFragment dialog = new ShareDialogFragment();
+
+                // Pass alert ID into the dialog
+                Bundle args = new Bundle();
+                args.putString("alert_id", highlight.getAlertId());
+                dialog.setArguments(args);
+
+                dialog.show(((androidx.fragment.app.FragmentActivity) v.getContext()).getSupportFragmentManager(), "share_dialog");
+            }
+        });
+
+
 
 // Handle see highlights click
         holder.seeHighlightsButton.setOnClickListener(v -> {

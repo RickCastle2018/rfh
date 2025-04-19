@@ -78,6 +78,34 @@ public class MainActivity extends AppCompatActivity {
         loadHighlights();
     }
 
+    public void handleImageSelectedWithAchievement(Uri imageUri, String achievementId, String alertId) {
+        if (imageUri != null) {
+            try {
+                File imageFile = createImageFile(imageUri);
+
+                // Call the new unified method
+                pocketbaseClient.createHighlightWithFormData(imageFile, "Current Location", achievementId, alertId, new PocketbaseClient.ApiCallback<Highlight>() {
+                    @Override
+                    public void onSuccess(Highlight newHighlight) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "Highlight shared!", Toast.LENGTH_SHORT).show();
+                            loadHighlights();
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e("HighlightUpload", "Failed to share highlight: " + e.getMessage());
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to share: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    }
+                });
+
+            } catch (Exception e) {
+                Toast.makeText(this, "Image error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private void loadAchievements() {
         pocketbaseClient.getAchievements(new PocketbaseClient.ApiCallback<List<Achievement>>() {
             @Override

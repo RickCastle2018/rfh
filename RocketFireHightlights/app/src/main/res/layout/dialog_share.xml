@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Share Your Moment"
+        android:text="Share Your Highlight"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -25,5 +25,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Choose from Gallery" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Achievement"
+        android:layout_marginTop="16dp"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/achievement_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

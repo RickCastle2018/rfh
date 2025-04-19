@@ -16,9 +16,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
+
 import okhttp3.*;
 import android.content.Intent;
 
@@ -346,7 +352,8 @@ public class PocketbaseClient {
                 if (response.isSuccessful()) {
                     try {
                         JSONObject jsonResponse = new JSONObject(response.body().string());
-                        String imageUrl = baseUrl + "/api/files/" + jsonResponse.getString("collectionId") + "/" + jsonResponse.getString("id") + "/" + jsonResponse.getString("image");
+//                        String imageUrl = baseUrl + "/api/files/" + jsonResponse.getString("collectionId") + "/" + jsonResponse.getString("id") + "/" + jsonResponse.getString("image");
+                        String imageUrl = jsonResponse.getString("image");
                         callback.onSuccess(imageUrl);
                     } catch (JSONException e) {
                         callback.onFailure(e);
@@ -357,6 +364,71 @@ public class PocketbaseClient {
             }
         });
     }
+
+    public void createHighlightWithFormData(File imageFile, String location, String achievementId, String alertId, final ApiCallback<Highlight> callback) {
+        // Create multipart form
+        MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+
+        builder.addFormDataPart("image", imageFile.getName(),
+                RequestBody.create(MediaType.parse("image/*"), imageFile));
+
+        builder.addFormDataPart("location", location);
+        builder.addFormDataPart("achievement", achievementId);
+        builder.addFormDataPart("timestamp", String.valueOf(System.currentTimeMillis()));
+        builder.addFormDataPart("shares", "0");
+
+        if (alertId != null) {
+            builder.addFormDataPart("alert", alertId);
+        }
+
+        RequestBody requestBody = builder.build();
+
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/collections/highlights/records")
+                .header("Authorization", authToken)
+                .post(requestBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure(new IOException("Highlight creation failed: " + response.body().string()));
+                    return;
+                }
+
+                try {
+                    JSONObject jsonResponse = new JSONObject(response.body().string());
+                    String createdString = jsonResponse.getString("created");
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS'Z'", Locale.getDefault());
+                    sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    Date createdDate = sdf.parse(createdString);
+
+                    Highlight highlight = new Highlight(
+                            jsonResponse.getString("id"),
+                            jsonResponse.optString("user", "anon"),
+                            location,
+                            createdDate,
+                            baseUrl + "/api/files/" + jsonResponse.getString("collectionId") + "/" + jsonResponse.getString("id") + "/" + jsonResponse.getString("image"),
+                            jsonResponse.optInt("shares", 0),
+                            achievementId,
+                            alertId
+                    );
+                    callback.onSuccess(highlight);
+                } catch (JSONException e) {
+                    callback.onFailure(e);
+                } catch (ParseException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
 
     public void createHighlight(String imageUrl, String location, String achievementId, final ApiCallback<Highlight> callback) {
         JSONObject json = new JSONObject();

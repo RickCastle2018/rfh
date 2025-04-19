@@ -1,5 +1,6 @@
 package com.nikonovcc.rfh;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -16,6 +17,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import okhttp3.*;
 import android.content.Intent;
@@ -206,7 +208,7 @@ public class PocketbaseClient {
         });
     }
 
-    public void getHighlightsFromAlerts(final ApiCallback<List<Highlight>> callback) {
+    public void getHighlightsFromAlerts(Activity activity, final ApiCallback<List<Highlight>> callback) {
         Request request = new Request.Builder()
                 .url(baseUrl + "/api/collections/alerts/records?perPage=1000")
                 .header("Authorization", authToken)
@@ -228,29 +230,53 @@ public class PocketbaseClient {
                 try {
                     JSONObject jsonResponse = new JSONObject(response.body().string());
                     JSONArray items = jsonResponse.getJSONArray("items");
-                    List<Highlight> highlights = new ArrayList<>();
+                    List<AlertGroup> alertGroups = new ArrayList<>();
 
                     for (int i = 0; i < items.length(); i++) {
                         JSONObject item = items.getJSONObject(i);
                         JSONObject bodyJson = item.getJSONObject("body");
-
-                        // Convert JSON back into AlertGroup
                         AlertGroup alertGroup = new Gson().fromJson(bodyJson.toString(), AlertGroup.class);
-
-                        Highlight highlight = Highlight.fromAlertGroup(alertGroup);
-                        if (highlight != null) {
-                            highlights.add(highlight);
-                        }
+                        alertGroups.add(alertGroup);
                     }
 
-                    Log.d("PB", "Highlights fetched, sending to callback " + highlights);
+                    // Now process all alertGroups with geo, then return list
+                    buildHighlightsWithGeo(activity, alertGroups, callback);
 
-                    callback.onSuccess(highlights);
                 } catch (JSONException e) {
                     callback.onFailure(e);
                 }
             }
         });
+    }
+
+    private void buildHighlightsWithGeo(Activity activity, List<AlertGroup> groups, ApiCallback<List<Highlight>> callback) {
+        List<Highlight> highlights = new ArrayList<>();
+        int total = groups.size();
+
+        if (total == 0) {
+            callback.onSuccess(highlights);
+            return;
+        }
+
+        // Track how many are finished
+        final int[] completed = {0};
+
+        for (AlertGroup group : groups) {
+            Highlight.createHighlightWithGeo(activity, group, new Highlight.HighlightCallback() {
+                @Override
+                public void onHighlightReady(Highlight highlight) {
+                    if (highlight != null) {
+                        highlights.add(highlight);
+                    }
+
+                    completed[0]++;
+                    if (completed[0] == total) {
+                        // All done
+                        callback.onSuccess(highlights);
+                    }
+                }
+            });
+        }
     }
 
     public void getHighlights(final ApiCallback<List<Highlight>> callback) {
@@ -277,9 +303,9 @@ public class PocketbaseClient {
                                     item.getString("id"),
                                     item.getString("user"),
                                     item.getString("location"),
-                                    new java.util.Date(item.getLong("timestamp")),
+                                    new java.util.Date(Calendar.getInstance().getTimeInMillis()),
                                     baseUrl + "/api/files/" + item.getString("collectionId") + "/" + item.getString("id") + "/" + item.getString("image"),
-                                    item.getInt("shares"),
+                                    item.getInt("likes"),
                                     item.getString("achievement"),
                                     item.getString("alert")
                             );
@@ -366,9 +392,9 @@ public class PocketbaseClient {
                                 jsonResponse.getString("id"),
                                 jsonResponse.getString("user"),
                                 jsonResponse.getString("location"),
-                                new java.util.Date(jsonResponse.getLong("timestamp")),
+                                new java.util.Date(jsonResponse.getLong("created")),
                                 imageUrl,
-                                jsonResponse.getInt("shares"),
+                                jsonResponse.getInt("likes"),
                                 jsonResponse.getString("achievement"),
                                 jsonResponse.getString("alert")
                         );
@@ -449,7 +475,44 @@ public class PocketbaseClient {
         });
     }
 
-    public void checkAndCreateAlertAndHighlight(AlertGroup group, ApiCallback<Highlight> callback) {
+    public void getShareCountForAlert(int alertId, ApiCallback<Integer> callback) {
+        String url = baseUrl + "/api/collections/highlights/records?filter=(alert='" + alertId + "')";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    callback.onFailure(new IOException("Failed to count shares: " + response.body().string()));
+                    return;
+                }
+
+                try {
+                    JSONObject json = new JSONObject(response.body().string());
+                    int count = json.getInt("totalItems");
+
+                    Log.e("PBClient", "Count: " + count);
+
+                    callback.onSuccess(count);
+
+                } catch (JSONException e) {
+                    callback.onFailure(e);
+                }
+            }
+        });
+    }
+
+
+    public void checkAndCreateAlertAndHighlight(Activity activity, AlertGroup group, ApiCallback<Highlight> callback) {
         String url = baseUrl + "/api/collections/alerts/records?filter=(id='" + group.id + "')";
 
         Request request = new Request.Builder()
@@ -469,9 +532,13 @@ public class PocketbaseClient {
                 boolean exists = !responseBody.contains("\"items\":[]");
 
                 if (!exists) {
-                    // Alert already exists → just return a Highlight for UI (no DB write)
-                    Highlight displayHighlight = Highlight.fromAlertGroup(group);
-                    callback.onSuccess(displayHighlight);
+                    // 🔁 Use async geo-based highlight preview
+                    Highlight.createHighlightWithGeo(activity, group, new Highlight.HighlightCallback() {
+                        @Override
+                        public void onHighlightReady(Highlight highlight) {
+                            callback.onSuccess(highlight);
+                        }
+                    });
                     return;
                 }
 
@@ -503,7 +570,7 @@ public class PocketbaseClient {
 
         JSONObject json = new JSONObject();
         try {
-            json.put("image", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Red_circle_with_white_border.svg/768px-Red_circle_with_white_border.svg.png");
+            json.put("image", "");
             json.put("location", location);
             json.put("achievement", "DefaultAchievementId");
             json.put("timestamp", alert.time);

@@ -93,11 +93,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadHighlights() {
-        pocketbaseClient.getHighlightsFromAlerts(new PocketbaseClient.ApiCallback<List<Highlight>>() {
+        pocketbaseClient.getHighlightsFromAlerts(this, new PocketbaseClient.ApiCallback<List<Highlight>>() {
             @Override
             public void onSuccess(List<Highlight> highlights) {
                 Log.d("LHIGHLIGHTS", "Loaded highlights: " + highlights);
-                runOnUiThread(() -> highlightsAdapter.setHighlights(highlights));
+                runOnUiThread(() -> {
+                    for (Highlight highlight : highlights) {
+                        try {
+                            int alertId = Integer.parseInt(highlight.getAlertId());
+
+                            // 🔁 For each highlight, fetch share count
+                            pocketbaseClient.getShareCountForAlert(alertId, new PocketbaseClient.ApiCallback<Integer>() {
+                                @Override
+                                public void onSuccess(Integer count) {
+                                    highlight.setShares(count);
+                                    runOnUiThread(() -> highlightsAdapter.addHighlight(highlight));
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Log.e("Highlight", "Failed to load share count for alertId: " + alertId, e);
+                                    runOnUiThread(() -> highlightsAdapter.addHighlight(highlight)); // fallback: add without shares
+                                }
+                            });
+
+                        } catch (NumberFormatException e) {
+                            Log.e("Highlight", "Invalid alertId format: " + highlight.getAlertId(), e);
+                            highlightsAdapter.addHighlight(highlight);
+                        }
+                    }
+                });
             }
 
             @Override
@@ -177,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
                     long t2 = b.alerts.get(0).time;
                     return Long.compare(t1, t2);
                 });
-                pocketbaseClient.checkAndCreateAlertAndHighlight(latestGroup, new PocketbaseClient.ApiCallback<Highlight>() {
+                pocketbaseClient.checkAndCreateAlertAndHighlight(MainActivity.this, latestGroup, new PocketbaseClient.ApiCallback<Highlight>() {
                     @Override
                     public void onSuccess(Highlight result) {
                         runOnUiThread(() -> {
@@ -199,45 +224,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void checkAndShowLatestAlert() {
-        AlertFetcher fetcher = new AlertFetcher();
-        PocketbaseClient pocketbaseClient = new PocketbaseClient(getApplicationContext(), "https://rocket-fire-highlights.pockethost.io");
-
-        fetcher.fetchAlerts(new AlertFetcher.AlertCallback() {
-            @Override
-            public void onSuccess(List<AlertGroup> alertGroups) {
-                if (alertGroups == null || alertGroups.isEmpty()) return;
-
-                AlertGroup latest = alertGroups.get(alertGroups.size() - 1);
-                pocketbaseClient.checkIfAlertExists(latest.id, new PocketbaseClient.ApiCallback<Boolean>() {
-                    @Override
-                    public void onSuccess(Boolean exists) {
-                        if (!exists) {
-                            pocketbaseClient.createAlertInPB(latest);
-                            pocketbaseClient.createHighlightFromAlertGroup(latest); // create it
-                        }
-
-                        // Always show it in UI (regardless of DB status)
-                        runOnUiThread(() -> {
-                            Highlight displayHighlight = Highlight.fromAlertGroup(latest);
-                            highlightsAdapter.setHighlights(List.of(displayHighlight));
-                        });
-                    }
-
-                    @Override
-                    public void onFailure(Exception e) {
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                    }
-                });
-            }
-
-            @Override
-            public void onError(Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Fetch failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }
-        });
-    }
-
     private void checkAndDisplayLatestAlert() {
         AlertFetcher fetcher = new AlertFetcher();
         fetcher.fetchAlerts(new AlertFetcher.AlertCallback() {
@@ -245,7 +231,7 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(List<AlertGroup> alertGroups) {
                 if (alertGroups == null || alertGroups.isEmpty()) return;
 
-                // Find latest alert group based on timestamp
+                // Find the latest alert group
                 AlertGroup latestGroup = Collections.max(alertGroups, (a, b) -> {
                     long t1 = a.alerts.get(0).time;
                     long t2 = b.alerts.get(0).time;
@@ -260,23 +246,42 @@ public class MainActivity extends AppCompatActivity {
                             pocketbaseClient.createHighlightFromAlertGroup(latestGroup);
                         }
 
-                        // Always display the highlight (don't overwrite old UI unless necessary)
-                        runOnUiThread(() -> {
-                            Highlight display = Highlight.fromAlertGroup(latestGroup);
-                            highlightsAdapter.addHighlight(display); // use addHighlight, not setHighlights
+                        // Always show a preview highlight with current city
+                        Highlight.createHighlightWithGeo(MainActivity.this, latestGroup, new Highlight.HighlightCallback() {
+                            @Override
+                            public void onHighlightReady(Highlight highlight) {
+                                pocketbaseClient.getShareCountForAlert(latestGroup.id, new PocketbaseClient.ApiCallback<Integer>() {
+                                    @Override
+                                    public void onSuccess(Integer count) {
+                                        Log.d("ABC", "Share count: " + count);
+                                        highlight.setShares(count); // ← set it on the highlight model
+                                        runOnUiThread(() -> highlightsAdapter.addHighlight(highlight));
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+                                        Log.e("Highlight", "Failed to get share count", e);
+                                        runOnUiThread(() -> highlightsAdapter.addHighlight(highlight)); // fallback to display without shares
+                                    }
+                                });
+                            }
                         });
                     }
 
                     @Override
                     public void onFailure(Exception e) {
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Check failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() ->
+                                Toast.makeText(MainActivity.this, "Check failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        );
                     }
                 });
             }
 
             @Override
             public void onError(Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "API error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() ->
+                        Toast.makeText(MainActivity.this, "API error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
             }
         });
     }

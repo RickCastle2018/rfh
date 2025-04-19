@@ -39,12 +39,28 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <ImageView
-            android:id="@+id/highlight_image"
+        <TextView
+            android:id="@+id/highlight_gallery_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Swipe to see more photos"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:visibility="gone"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/highlight_gallery"
             android:layout_width="match_parent"
             android:layout_height="200dp"
-            android:layout_marginTop="8dp"
-            android:scaleType="centerCrop" />
+            android:layout_marginTop="16dp"
+            android:clipToPadding="false"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone"
+            android:overScrollMode="never"
+            android:scrollbars="horizontal"/>
+
 
         <Button
             android:id="@+id/see_highlights_button"

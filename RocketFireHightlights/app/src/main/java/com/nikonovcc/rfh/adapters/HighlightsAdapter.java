@@ -16,6 +16,10 @@ import java.util.List;
 public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.ViewHolder> {
     private List<Highlight> highlights = new ArrayList<>();
 
+    public List<Highlight> getHighlights() {
+        return highlights;
+    }
+
     public class ViewHolder extends RecyclerView.ViewHolder {
         TextView locationView;
         TextView timeView;
@@ -65,5 +69,10 @@ public class HighlightsAdapter extends RecyclerView.Adapter<HighlightsAdapter.Vi
     public void setHighlights(List<Highlight> highlights) {
         this.highlights = highlights;
         notifyDataSetChanged();
+    }
+
+    public void addHighlight(Highlight highlight) {
+        highlights.add(0, highlight); // insert at top
+        notifyItemInserted(0);
     }
 }

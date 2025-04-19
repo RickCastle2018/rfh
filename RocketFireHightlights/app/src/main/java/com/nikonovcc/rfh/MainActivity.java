@@ -3,6 +3,7 @@ package com.nikonovcc.rfh;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,14 +11,20 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
+import android.os.Handler;
+import android.os.Looper;
+import java.util.Collections;
+
 
 import com.nikonovcc.rfh.adapters.AchievementsAdapter;
 import com.nikonovcc.rfh.adapters.HighlightsAdapter;
 import com.nikonovcc.rfh.models.Achievement;
+import com.nikonovcc.rfh.models.AlertGroup;
 import com.nikonovcc.rfh.models.Highlight;
-import com.nikonovcc.rfh.work.AlertSyncWorker;
+import com.nikonovcc.rfh.utils.AlertFetcher;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -42,17 +49,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        PeriodicWorkRequest request =
-                new PeriodicWorkRequest.Builder(AlertSyncWorker.class, 1, TimeUnit.MINUTES).build();
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                "alert_worker",
-                ExistingPeriodicWorkPolicy.KEEP,
-                request
-        );
-
         // Initialize Pocketbase client
         pocketbaseClient = new PocketbaseClient(getApplicationContext(),"https://rocket-fire-highlights.pockethost.io");
+
+        checkAndDisplayLatestAlert(); // this will do both check + create + UI
+        startRepeatingAlertCheck();
 
         // Initialize views
         achievementsRecyclerView = findViewById(R.id.achievements_recycler_view);
@@ -60,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         shareButton = findViewById(R.id.share_button);
 
         // Set up achievements RecyclerView
-        achievementsRecyclerView.setLayoutManager(new GridLayoutManager(this, 3));
+        achievementsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         achievementsAdapter = new AchievementsAdapter();
         achievementsRecyclerView.setAdapter(achievementsAdapter);
 
@@ -95,16 +96,6 @@ public class MainActivity extends AppCompatActivity {
         pocketbaseClient.getHighlights(new PocketbaseClient.ApiCallback<List<Highlight>>() {
             @Override
             public void onSuccess(List<Highlight> highlights) {
-                highlights.add(new Highlight(
-                        "123",
-                        "test",
-                        "testcity",
-                        Calendar.getInstance().getTime(),
-                        "test",
-                        10,
-                        "testID1",
-                        "testID2"
-                ));
                 runOnUiThread(() -> highlightsAdapter.setHighlights(highlights));
             }
 
@@ -169,5 +160,134 @@ public class MainActivity extends AppCompatActivity {
         }
         outputStream.flush();
         return file;
+    }
+
+    private void fetchAndShowLastAlert() {
+        AlertFetcher fetcher = new AlertFetcher();
+        PocketbaseClient pocketbaseClient = new PocketbaseClient(getApplicationContext(), "https://rocket-fire-highlights.pockethost.io");
+
+        fetcher.fetchAlerts(new AlertFetcher.AlertCallback() {
+            @Override
+            public void onSuccess(List<AlertGroup> alertGroups) {
+                if (alertGroups == null || alertGroups.isEmpty()) return;
+
+                AlertGroup latestGroup = Collections.max(alertGroups, (a, b) -> {
+                    long t1 = a.alerts.get(0).time;
+                    long t2 = b.alerts.get(0).time;
+                    return Long.compare(t1, t2);
+                });
+                pocketbaseClient.checkAndCreateAlertAndHighlight(latestGroup, new PocketbaseClient.ApiCallback<Highlight>() {
+                    @Override
+                    public void onSuccess(Highlight result) {
+                        runOnUiThread(() -> {
+                            highlightsAdapter.setHighlights(List.of(result));
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Alert load failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "API fetch failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    private void checkAndShowLatestAlert() {
+        AlertFetcher fetcher = new AlertFetcher();
+        PocketbaseClient pocketbaseClient = new PocketbaseClient(getApplicationContext(), "https://rocket-fire-highlights.pockethost.io");
+
+        fetcher.fetchAlerts(new AlertFetcher.AlertCallback() {
+            @Override
+            public void onSuccess(List<AlertGroup> alertGroups) {
+                if (alertGroups == null || alertGroups.isEmpty()) return;
+
+                AlertGroup latest = alertGroups.get(alertGroups.size() - 1);
+                pocketbaseClient.checkIfAlertExists(latest.id, new PocketbaseClient.ApiCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean exists) {
+                        if (!exists) {
+                            pocketbaseClient.createAlertInPB(latest);
+                            pocketbaseClient.createHighlightFromAlertGroup(latest); // create it
+                        }
+
+                        // Always show it in UI (regardless of DB status)
+                        runOnUiThread(() -> {
+                            Highlight displayHighlight = Highlight.fromAlertGroup(latest);
+                            highlightsAdapter.setHighlights(List.of(displayHighlight));
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Fetch failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    private void checkAndDisplayLatestAlert() {
+        AlertFetcher fetcher = new AlertFetcher();
+        fetcher.fetchAlerts(new AlertFetcher.AlertCallback() {
+            @Override
+            public void onSuccess(List<AlertGroup> alertGroups) {
+                if (alertGroups == null || alertGroups.isEmpty()) return;
+
+                // Find latest alert group based on timestamp
+                AlertGroup latestGroup = Collections.max(alertGroups, (a, b) -> {
+                    long t1 = a.alerts.get(0).time;
+                    long t2 = b.alerts.get(0).time;
+                    return Long.compare(t1, t2);
+                });
+
+                pocketbaseClient.checkIfAlertExists(latestGroup.id, new PocketbaseClient.ApiCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean exists) {
+                        if (!exists) {
+                            pocketbaseClient.createAlertInPB(latestGroup);
+                            pocketbaseClient.createHighlightFromAlertGroup(latestGroup);
+                        }
+
+                        // Always display the highlight (don't overwrite old UI unless necessary)
+                        runOnUiThread(() -> {
+                            Highlight display = Highlight.fromAlertGroup(latestGroup);
+                            highlightsAdapter.addHighlight(display); // use addHighlight, not setHighlights
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Check failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "API error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+
+    private void startRepeatingAlertCheck() {
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                checkAndDisplayLatestAlert();
+                startRepeatingAlertCheck(); // run again after 60s
+            }
+        }, 60 * 1000);
     }
 }

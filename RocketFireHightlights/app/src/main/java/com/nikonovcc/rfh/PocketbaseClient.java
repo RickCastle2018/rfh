@@ -379,7 +379,117 @@ public class PocketbaseClient {
         });
     }
 
-    private void createAlertInPB(AlertGroup alertGroup) {
+    public void checkIfAlertExists(int alertId, ApiCallback<Boolean> callback) {
+        String url = baseUrl + "/api/collections/alerts/records?filter=(id='" + alertId + "')";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String responseBody = response.body().string();
+                boolean exists = !responseBody.contains("\"items\":[]");
+                callback.onSuccess(exists);
+            }
+        });
+    }
+
+    public void checkAndCreateAlertAndHighlight(AlertGroup group, ApiCallback<Highlight> callback) {
+        String url = baseUrl + "/api/collections/alerts/records?filter=(id='" + group.id + "')";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", authToken)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callback.onFailure(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String responseBody = response.body().string();
+                boolean exists = !responseBody.contains("\"items\":[]");
+
+                if (!exists) {
+                    // Alert already exists → just return a Highlight for UI (no DB write)
+                    Highlight displayHighlight = Highlight.fromAlertGroup(group);
+                    callback.onSuccess(displayHighlight);
+                    return;
+                }
+
+                // Save alert
+                createAlertInPB(group);
+
+                // Save highlight
+                createHighlightFromAlertGroup(group, new ApiCallback<Highlight>() {
+                    @Override
+                    public void onSuccess(Highlight result) {
+                        callback.onSuccess(result);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        callback.onFailure(e);
+                    }
+                });
+            }
+        });
+    }
+
+
+    public void createHighlightFromAlertGroup(AlertGroup group) {
+        if (group.alerts == null || group.alerts.isEmpty()) return;
+
+        com.nikonovcc.rfh.models.Alert alert = group.alerts.get(0);
+        String location = (alert.cities != null && !alert.cities.isEmpty()) ? alert.cities.get(0) : "Unknown";
+
+        JSONObject json = new JSONObject();
+        try {
+            json.put("image", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Red_circle_with_white_border.svg/768px-Red_circle_with_white_border.svg.png");
+            json.put("location", location);
+            json.put("achievement", "DefaultAchievementId");
+            json.put("timestamp", alert.time);
+            json.put("shares", 0);
+            json.put("alert", String.valueOf(group.id));
+        } catch (JSONException e) {
+            Log.e("PBClient", "Failed to build highlight JSON", e);
+            return;
+        }
+
+        RequestBody body = RequestBody.create(MediaType.parse("application/json"), json.toString());
+
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/collections/highlights/records")
+                .header("Authorization", authToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("PBClient", "Highlight creation failed", e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) {
+                Log.d("PBClient", "Highlight created: " + response.code());
+            }
+        });
+    }
+
+
+    public void createAlertInPB(AlertGroup alertGroup) {
         JSONObject payload = new JSONObject();
         try {
             payload.put("id", alertGroup.id);
@@ -412,55 +522,69 @@ public class PocketbaseClient {
         });
     }
 
-    public void createAlertIfMissing(AlertGroup group) {
-        // Check if it exists (by ID maybe?)
-        Request check = new Request.Builder()
-                .url(baseUrl + "/api/collections/alerts/records?filter=id=" + group.id)
+    private void createHighlightFromAlertGroup(AlertGroup group, ApiCallback<Highlight> callback) {
+        if (group.alerts == null || group.alerts.isEmpty()) {
+            callback.onFailure(new Exception("No alerts in group"));
+            return;
+        }
+
+        com.nikonovcc.rfh.models.Alert alert = group.alerts.get(0);
+        String location = (alert.cities != null && !alert.cities.isEmpty()) ? alert.cities.get(0) : "Unknown";
+
+        JSONObject json = new JSONObject();
+        try {
+            json.put("image", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Red_circle_with_white_border.svg/768px-Red_circle_with_white_border.svg.png");
+            json.put("location", location);
+            json.put("achievement", "DefaultAchievementId"); // optional
+            json.put("timestamp", alert.time);
+            json.put("shares", 0);
+            json.put("alert", String.valueOf(group.id));
+        } catch (JSONException e) {
+            callback.onFailure(e);
+            return;
+        }
+
+        RequestBody body = RequestBody.create(MediaType.parse("application/json"), json.toString());
+
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/collections/highlights/records")
                 .header("Authorization", authToken)
+                .post(body)
                 .build();
 
-        client.newCall(check).enqueue(new Callback() {
+        client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                Log.e("PBClient", "Check failed", e);
+                callback.onFailure(e);
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful() && response.body().string().contains("\"items\":[]")) {
-                    // Alert doesn't exist → create it
-                    JSONObject json = new JSONObject();
-                    try {
-                        json.put("id", group.id);
-                        json.put("body", new Gson().toJson(group));
-                    } catch (JSONException e) {
-                        Log.e("PBClient", "JSON error", e);
-                    }
+                if (!response.isSuccessful()) {
+                    callback.onFailure(new IOException("Highlight creation failed: " + response.body().string()));
+                    return;
+                }
 
-                    RequestBody body = RequestBody.create(
-                            MediaType.parse("application/json"), json.toString());
-
-                    Request post = new Request.Builder()
-                            .url(baseUrl + "/api/collections/alerts/records")
-                            .header("Authorization", authToken)
-                            .post(body)
-                            .build();
-
-                    client.newCall(post).enqueue(new Callback() {
-                        @Override
-                        public void onFailure(Call call, IOException e) {
-                            Log.e("PBClient", "Alert create failed", e);
-                        }
-
-                        @Override
-                        public void onResponse(Call call, Response response) {
-                            Log.d("PBClient", "Alert created: " + response.code());
-                        }
-                    });
+                try {
+                    JSONObject jsonResponse = new JSONObject(response.body().string());
+                    Highlight highlight = new Highlight(
+                            jsonResponse.getString("id"),
+                            jsonResponse.optString("user", "anon"),
+                            location,
+                            new java.util.Date(alert.time),
+                            json.getString("image"),
+                            0,
+                            json.getString("achievement"),
+                            String.valueOf(group.id)
+                    );
+                    callback.onSuccess(highlight);
+                } catch (JSONException e) {
+                    callback.onFailure(e);
                 }
             }
         });
     }
+
 
     public interface ApiCallback<T> {
         void onSuccess(T result);
@@ -501,12 +625,6 @@ public class PocketbaseClient {
             Log.e("PocketbaseClient", "Token decode error", e);
             return true; // fallback to expired
         }
-    }
-
-    private void redirectToLogin() {
-        Intent intent = new Intent(context, LoginActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(intent);
     }
 
 }

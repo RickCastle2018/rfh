@@ -4,7 +4,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -43,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private PocketbaseClient pocketbaseClient;
     private AchievementsAdapter achievementsAdapter;
     private HighlightsAdapter highlightsAdapter;
+    private TextView logoutLink;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,8 +73,18 @@ public class MainActivity extends AppCompatActivity {
         highlightsAdapter = new HighlightsAdapter();
         highlightsRecyclerView.setAdapter(highlightsAdapter);
 
-        // Set up share button
-//        shareButton.setOnClickListener(v -> openShareDialog());
+        logoutLink = findViewById(R.id.logout_link);
+        logoutLink.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pocketbaseClient.setAuthToken(null);
+                // redirect to login
+                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finish();
+            }
+        });
 
         // Load data
         loadAchievements();

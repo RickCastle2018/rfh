@@ -41,6 +41,14 @@ public class PocketbaseClient {
         this.authToken = loadToken(); // Load token at init
     }
 
+    public void setAuthToken(String token) {
+        this.authToken = token;
+        SharedPreferences sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("auth_token", token);
+        editor.apply();
+    }
+
     public void register(String username, String email, String password, final ApiCallback<String> callback) {
         JSONObject json = new JSONObject();
         try {

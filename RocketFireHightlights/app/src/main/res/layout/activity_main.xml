@@ -49,6 +49,17 @@
             android:text="Track, collect, and share your צבע אדום moments with people nearby and beyond.\n\nCreated with care by Nikita, a student from Herzliya." />
 
         <TextView
+            android:id="@+id/logout_link"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Logout"
+            android:textColor="@android:color/holo_blue_dark"
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+            <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

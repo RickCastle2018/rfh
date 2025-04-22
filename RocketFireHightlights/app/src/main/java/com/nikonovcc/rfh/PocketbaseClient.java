@@ -506,49 +506,6 @@ public class PocketbaseClient {
         });
     }
 
-    public void syncAlertsIfNeeded(List<AlertGroup> incomingAlerts, final ApiCallback<Void> callback) {
-        Request request = new Request.Builder()
-                .url(baseUrl + "/api/collections/alerts/records?perPage=10000")
-                .header("Authorization", authToken)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                callback.onFailure(e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    callback.onFailure(new IOException("Failed to fetch PB alerts: " + response.body().string()));
-                    return;
-                }
-
-                try {
-                    JSONObject json = new JSONObject(response.body().string());
-                    JSONArray existingItems = json.optJSONArray("items");
-                    List<Integer> existingIds = new ArrayList<>();
-
-                    for (int i = 0; i < existingItems.length(); i++) {
-                        JSONObject obj = existingItems.getJSONObject(i);
-                        existingIds.add(obj.getInt("id"));
-                    }
-
-                    for (AlertGroup group : incomingAlerts) {
-                        if (!existingIds.contains(group.id)) {
-                            createAlertInPB(group); // fire-and-forget; not awaiting
-                        }
-                    }
-
-                    callback.onSuccess(null);
-                } catch (JSONException e) {
-                    callback.onFailure(e);
-                }
-            }
-        });
-    }
-
     public void checkIfAlertExists(int alertId, ApiCallback<Boolean> callback) {
         String url = baseUrl + "/api/collections/alerts/records?filter=(id='" + alertId + "')";
 
